@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 import DH
 import pickle
 import random
+from cryptography.hazmat.primitives import serialization
 
 UPLOAD_FOLDER = './media/text-files/'
 UPLOAD_KEY = './media/public-keys/'
@@ -139,13 +140,11 @@ def register_user():
 	username = request.form['username']
 	firstname = request.form['first-name']
 	secondname = request.form['last-name']
-	pin = int(random.randint(1,128))
-	pin = pin % 64
 	#Generating a unique private key
-	privatekey = DH.generate_private_key(pin)
+	privatekey = DH.generate_private_key()
 	while privatekey in privatekeylist:
-		privatekey = DH.generate_private_key(pin)
-	privatekeylist.append(str(privatekey))
+		privatekey = DH.generate_private_key()
+	privatekeylist.append(privatekey)
 	usernamelist.append(username)
 	#Save/update pickle
 	pickleObj = open("./media/database/database.pickle","wb")
@@ -158,12 +157,16 @@ def register_user():
 	filename = UPLOAD_KEY+username+'-'+secondname.upper()+firstname.lower()+'-PublicKey.pem'
 	# Generate public key and save it in the file generated
 	publickey = DH.generate_public_key(privatekey)
-	fileObject = open(filename,"w")
-	fileObject.write(str(publickey))
-	return render_template('key-display.html',privatekey=str(privatekey))
+	pub = publickey.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+	fileObject = open(filename,"wb")
+	fileObject.write(pub)
+	return render_template('key-display.html',privatekey=privatekey)
 
 
 	
 if __name__ == '__main__':
-	app.run(host="0.0.0.0", port=80)
-	# app.run()
+	#app.run(host="0.0.0.0", port=80)
+	app.run()
